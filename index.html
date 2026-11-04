@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070b12">
+  <title>GPU LAB – Laboratorio virtual de tarjetas gráficas</title>
+  <meta name="description" content="Explora, desmonta y diagnostica tarjetas gráficas en 3D. Simulador educativo, sin registro.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%230d1522%27/%3E%3Crect x=%274%27 y=%2710%27 width=%2724%27 height=%2713%27 rx=%272%27 fill=%27%2338bdf8%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%274%27 fill=%27%230d1522%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">GPU <b>LAB</b><small>1.0</small></div>
+    <select id="gpuSel" aria-label="Tarjeta gráfica"></select>
+    <div class="views" role="group" aria-label="Vistas">
+      <button data-view="front">Frontal</button><button data-view="back">Posterior</button><button data-view="side">Lateral</button><button data-view="iso">Iso</button>
+    </div>
+    <div class="tog">
+      <label><input type="checkbox" id="tgLabels" checked> Etiquetas</label>
+      <label><input type="checkbox" id="tgSpin" checked> Ventiladores</label>
+    </div>
+  </header>
+  <main>
+    <section id="viewer">
+      <canvas id="cv"></canvas>
+      <div id="labels"></div>
+      <div class="badge">Representación educativa · mediciones simuladas</div>
+      <div class="hud"><label>Despiece <input type="range" id="explode" min="0" max="100" value="0" aria-label="Despiece"></label></div>
+      <div id="toast" role="status"></div>
+      <div id="loading">Cargando visor 3D…</div>
+    </section>
+    <aside id="panel">
+      <nav id="tabs"></nav>
+      <div id="content"></div>
+    </aside>
+  </main>
+  <noscript><p style="padding:2rem;color:#fff">GPU LAB necesita JavaScript.</p></noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

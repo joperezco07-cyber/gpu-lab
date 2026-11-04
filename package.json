@@ -1,0 +1,12 @@
+{
+  "name": "gpu-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "GPU LAB - laboratorio virtual de diagnóstico de tarjetas gráficas (educativo)",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node tests/validate-data.mjs"
+  },
+  "license": "MIT"
+}

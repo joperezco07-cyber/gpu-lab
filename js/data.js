@@ -1,55 +1,92 @@
 // GPU LAB – datos educativos (tarjetas, componentes, desmontaje, escenarios, quiz)
 // Los modelos 3D son REPRESENTACIONES EDUCATIVAS procedurales, no réplicas exactas.
 
+// Catálogo de referencia (valores aproximados de especificación de referencia; pueden variar según fabricante/versión).
+// Formato: [vendor, nombre, arquitectura(GPU), memoria, bus(bits), TBP(W)]
+const CATALOG = [
+  // NVIDIA – Pascal
+  ['NVIDIA', 'GeForce GTX 1050 Ti', 'Pascal (GP107)', '4 GB GDDR5', 128, 75],
+  ['NVIDIA', 'GeForce GTX 1060 6GB', 'Pascal (GP106)', '6 GB GDDR5', 192, 120],
+  ['NVIDIA', 'GeForce GTX 1070', 'Pascal (GP104)', '8 GB GDDR5', 256, 150],
+  ['NVIDIA', 'GeForce GTX 1080', 'Pascal (GP104)', '8 GB GDDR5X', 256, 180],
+  ['NVIDIA', 'GeForce GTX 1080 Ti', 'Pascal (GP102)', '11 GB GDDR5X', 352, 250],
+  // NVIDIA – Turing
+  ['NVIDIA', 'GeForce GTX 1650', 'Turing (TU117)', '4 GB GDDR5', 128, 75],
+  ['NVIDIA', 'GeForce GTX 1660 Super', 'Turing (TU116)', '6 GB GDDR6', 192, 125],
+  ['NVIDIA', 'GeForce RTX 2060', 'Turing (TU106)', '6 GB GDDR6', 192, 160],
+  ['NVIDIA', 'GeForce RTX 2070 Super', 'Turing (TU104)', '8 GB GDDR6', 256, 215],
+  ['NVIDIA', 'GeForce RTX 2080 Ti', 'Turing (TU102)', '11 GB GDDR6', 352, 250],
+  // NVIDIA – Ampere
+  ['NVIDIA', 'GeForce RTX 3050', 'Ampere (GA106)', '8 GB GDDR6', 128, 130],
+  ['NVIDIA', 'GeForce RTX 3060', 'Ampere (GA106)', '12 GB GDDR6', 192, 170],
+  ['NVIDIA', 'GeForce RTX 3060 Ti', 'Ampere (GA104)', '8 GB GDDR6', 256, 200],
+  ['NVIDIA', 'GeForce RTX 3070', 'Ampere (GA104)', '8 GB GDDR6', 256, 220],
+  ['NVIDIA', 'GeForce RTX 3080', 'Ampere (GA102)', '10 GB GDDR6X', 320, 320],
+  ['NVIDIA', 'GeForce RTX 3090', 'Ampere (GA102)', '24 GB GDDR6X', 384, 350],
+  // NVIDIA – Ada Lovelace
+  ['NVIDIA', 'GeForce RTX 4060', 'Ada Lovelace (AD107)', '8 GB GDDR6', 128, 115],
+  ['NVIDIA', 'GeForce RTX 4060 Ti', 'Ada Lovelace (AD106)', '8 GB GDDR6', 128, 160],
+  ['NVIDIA', 'GeForce RTX 4070', 'Ada Lovelace (AD104)', '12 GB GDDR6X', 192, 200],
+  ['NVIDIA', 'GeForce RTX 4070 Super', 'Ada Lovelace (AD104)', '12 GB GDDR6X', 192, 220],
+  ['NVIDIA', 'GeForce RTX 4070 Ti Super', 'Ada Lovelace (AD103)', '16 GB GDDR6X', 256, 285],
+  ['NVIDIA', 'GeForce RTX 4080 Super', 'Ada Lovelace (AD103)', '16 GB GDDR6X', 256, 320],
+  ['NVIDIA', 'GeForce RTX 4090', 'Ada Lovelace (AD102)', '24 GB GDDR6X', 384, 450],
+  // NVIDIA – Blackwell
+  ['NVIDIA', 'GeForce RTX 5060', 'Blackwell (GB206)', '8 GB GDDR7', 128, 145],
+  ['NVIDIA', 'GeForce RTX 5060 Ti', 'Blackwell (GB206)', '16 GB GDDR7', 128, 180],
+  ['NVIDIA', 'GeForce RTX 5070', 'Blackwell (GB205)', '12 GB GDDR7', 192, 250],
+  ['NVIDIA', 'GeForce RTX 5070 Ti', 'Blackwell (GB203)', '16 GB GDDR7', 256, 300],
+  ['NVIDIA', 'GeForce RTX 5080', 'Blackwell (GB203)', '16 GB GDDR7', 256, 360],
+  ['NVIDIA', 'GeForce RTX 5090', 'Blackwell (GB202)', '32 GB GDDR7', 512, 575],
+  // AMD
+  ['AMD', 'Radeon RX 580', 'Polaris (Polaris 20)', '8 GB GDDR5', 256, 185],
+  ['AMD', 'Radeon RX 5600 XT', 'RDNA 1 (Navi 10)', '6 GB GDDR6', 192, 160],
+  ['AMD', 'Radeon RX 5700 XT', 'RDNA 1 (Navi 10)', '8 GB GDDR6', 256, 225],
+  ['AMD', 'Radeon RX 6600', 'RDNA 2 (Navi 23)', '8 GB GDDR6', 128, 132],
+  ['AMD', 'Radeon RX 6600 XT', 'RDNA 2 (Navi 23)', '8 GB GDDR6', 128, 160],
+  ['AMD', 'Radeon RX 6700 XT', 'RDNA 2 (Navi 22)', '12 GB GDDR6', 192, 230],
+  ['AMD', 'Radeon RX 6800', 'RDNA 2 (Navi 21)', '16 GB GDDR6', 256, 250],
+  ['AMD', 'Radeon RX 6800 XT', 'RDNA 2 (Navi 21)', '16 GB GDDR6', 256, 300],
+  ['AMD', 'Radeon RX 6900 XT', 'RDNA 2 (Navi 21)', '16 GB GDDR6', 256, 300],
+  ['AMD', 'Radeon RX 7600', 'RDNA 3 (Navi 33)', '8 GB GDDR6', 128, 165],
+  ['AMD', 'Radeon RX 7700 XT', 'RDNA 3 (Navi 32)', '12 GB GDDR6', 192, 245],
+  ['AMD', 'Radeon RX 7800 XT', 'RDNA 3 (Navi 32)', '16 GB GDDR6', 256, 263],
+  ['AMD', 'Radeon RX 7900 GRE', 'RDNA 3 (Navi 31)', '16 GB GDDR6', 256, 260],
+  ['AMD', 'Radeon RX 7900 XT', 'RDNA 3 (Navi 31)', '20 GB GDDR6', 320, 315],
+  ['AMD', 'Radeon RX 7900 XTX', 'RDNA 3 (Navi 31, chiplets)', '24 GB GDDR6', 384, 355],
+  ['AMD', 'Radeon RX 9060 XT', 'RDNA 4 (Navi 44)', '16 GB GDDR6', 128, 160],
+  ['AMD', 'Radeon RX 9070', 'RDNA 4 (Navi 48)', '16 GB GDDR6', 256, 220],
+  ['AMD', 'Radeon RX 9070 XT', 'RDNA 4 (Navi 48)', '16 GB GDDR6', 256, 304],
+  // Intel
+  ['Intel', 'Arc A380', 'Alchemist (ACM-G11)', '6 GB GDDR6', 96, 75],
+  ['Intel', 'Arc A580', 'Alchemist (ACM-G10)', '8 GB GDDR6', 256, 185],
+  ['Intel', 'Arc A750', 'Alchemist (ACM-G10)', '8 GB GDDR6', 256, 225],
+  ['Intel', 'Arc A770', 'Alchemist (ACM-G10)', '16 GB GDDR6', 256, 225],
+  ['Intel', 'Arc B570', 'Battlemage (BMG-G21)', '10 GB GDDR6', 160, 150],
+  ['Intel', 'Arc B580', 'Battlemage (BMG-G21)', '12 GB GDDR6', 192, 190]
+];
+const LOOK = { NVIDIA: { accent: 0x76b900, shroud: 0x15181d }, AMD: { accent: 0xe5322d, shroud: 0x23262b }, Intel: { accent: 0x2f8cff, shroud: 0x20242c } };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function makeGPU([vendor, name, arch, mem, bus, tdp]) {
+  const vram = Math.max(2, Math.round(bus / 32));
+  const fans = tdp <= 80 ? 1 : tdp < 300 ? 2 : (tdp >= 450 ? 3 : 2);
+  const slots = tdp <= 80 ? 2 : tdp < 180 ? 2 : tdp < 300 ? 2.5 : tdp < 400 ? 3 : 3.5;
+  const hw = 0.9 + 0.09 * vram, hh = 0.8 + 0.09 * vram;
+  const look = LOOK[vendor];
+  return {
+    id: (vendor + '-' + name).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    name: `${vendor === 'NVIDIA' ? 'NVIDIA ' : vendor === 'Intel' ? 'Intel ' : 'AMD '}${name}`,
+    short: name.replace(/^(GeForce|Radeon) /, ''), vendor, arch, mem, bus: bus + ' bits', tdp: tdp + ' W (TBP de referencia)', tdpW: tdp,
+    model: { len: clamp(6.5 + tdp * 0.0185, 8, 15), wid: clamp(5 + tdp * 0.0035 * 4, 5, 7), slots, fans, vram, phases: clamp(Math.round(tdp / 45), 2, 10), ring: [hw, hh], shroud: look.shroud, accent: look.accent, die: 0.8 + tdp * 0.0012 }
+  };
+}
+
 export const GPUS = [
-  {
-    id: 'rtx4090', name: 'NVIDIA GeForce RTX 4090', short: 'RTX 4090', vendor: 'NVIDIA',
-    arch: 'Ada Lovelace (GPU AD102)', mem: '24 GB GDDR6X', bus: '384 bits', bandwidth: '≈1008 GB/s',
-    tdp: '450 W (TBP de referencia)', tdpW: 450,
-    connectors: 'PCIe 4.0 x16 · 1× 16 pines 12VHPWR · 3× DisplayPort 1.4a · 1× HDMI 2.1a',
-    cooling: 'Disipador de aluminio de gran tamaño (~3.5 ranuras), heatpipes, cámara de vapor y 3 ventiladores axiales (en esta representación)',
-    internals: 'GPU de gran tamaño, 12 módulos de VRAM alrededor del núcleo, VRM de muchas fases, backplate.',
-    note: 'Representación educativa: el número de ventiladores y las proporciones varían según el fabricante.',
-    model: { len: 15, wid: 7, slots: 3.5, fans: 3, vram: 12, phases: 10, ring: [2.0, 1.9], shroud: 0x15181d, accent: 0xb6e24a, die: 1.3 }
-  },
-  {
-    id: 'rtx4060', name: 'NVIDIA GeForce RTX 4060', short: 'RTX 4060', vendor: 'NVIDIA',
-    arch: 'Ada Lovelace (GPU AD107)', mem: '8 GB GDDR6', bus: '128 bits', bandwidth: '≈272 GB/s',
-    tdp: '115 W (TBP de referencia)', tdpW: 115,
-    connectors: 'PCIe 4.0 x8 (conector x16) · 1× 8 pines · 3× DisplayPort 1.4a · 1× HDMI 2.1a',
-    cooling: 'Disipador compacto de 2 ranuras, heatpipes y 2 ventiladores axiales',
-    internals: 'GPU pequeña, 4 módulos de VRAM, VRM de pocas fases, PCB corto.',
-    note: 'Representación educativa de una tarjeta compacta de gama media.',
-    model: { len: 9.5, wid: 5.5, slots: 2, fans: 2, vram: 4, phases: 4, ring: [1.3, 1.2], shroud: 0x1c2026, accent: 0x76b900, die: 0.9 }
-  },
-  {
-    id: 'rx7900xtx', name: 'AMD Radeon RX 7900 XTX', short: 'RX 7900 XTX', vendor: 'AMD',
-    arch: 'RDNA 3 (GPU Navi 31, diseño de chiplets)', mem: '24 GB GDDR6', bus: '384 bits', bandwidth: '≈960 GB/s',
-    tdp: '355 W (TBP de referencia)', tdpW: 355,
-    connectors: 'PCIe 4.0 x16 · 2× 8 pines · 2× DisplayPort 2.1 · 1× HDMI 2.1 · 1× USB-C',
-    cooling: 'Disipador de ~2.5 ranuras con cámara de vapor y 2 ventiladores axiales',
-    internals: 'Módulo GCD central rodeado por 6 chiplets de caché MCD, 12 módulos de VRAM, VRM de varias fases.',
-    note: 'Representación educativa: no modela los chiplets MCD individualmente.',
-    model: { len: 14, wid: 6.5, slots: 2.5, fans: 2, vram: 12, phases: 8, ring: [2.0, 1.9], shroud: 0x23262b, accent: 0xe5322d, die: 1.2 }
-  },
-  {
-    id: 'arca770', name: 'Intel Arc A770', short: 'Arc A770', vendor: 'Intel',
-    arch: 'Alchemist (GPU ACM-G10)', mem: '16 GB GDDR6', bus: '256 bits', bandwidth: '≈560 GB/s',
-    tdp: '≈225 W', tdpW: 225,
-    connectors: 'PCIe 4.0 x16 · 1× 8 pines + 1× 6 pines · 3× DisplayPort 2.0 · 1× HDMI 2.1',
-    cooling: 'Disipador de 2 ranuras con 2 ventiladores axiales',
-    internals: 'GPU monolítica, 8 módulos de VRAM, VRM de fases medias.',
-    note: 'Representación educativa; los diseños de socios de Intel difieren.',
-    model: { len: 14, wid: 6, slots: 2, fans: 2, vram: 8, phases: 6, ring: [1.8, 1.6], shroud: 0x20242c, accent: 0x2f8cff, die: 1.2 }
-  },
+  ...CATALOG.map(makeGPU),
   {
     id: 'generic', name: 'GPU genérica de laboratorio', short: 'GPU Lab', vendor: 'Educativa',
-    arch: 'Arquitectura ficticia de laboratorio', mem: '8 GB GDDR6', bus: '256 bits', bandwidth: '≈448 GB/s (ejemplo)',
-    tdp: '200 W (ejemplo)', tdpW: 200,
-    connectors: 'PCIe x16 · 1× 8 pines · 3× DisplayPort · 1× HDMI',
-    cooling: 'Disipador de 2 ranuras, heatpipes y 2 ventiladores',
-    internals: 'Modelo didáctico simplificado: 8 módulos de VRAM, 5 fases de VRM.',
-    note: 'No corresponde a ningún producto comercial; sirve para practicar identificación de componentes.',
+    arch: 'Arquitectura ficticia de laboratorio', mem: '8 GB GDDR6', bus: '256 bits', tdp: '200 W (ejemplo)', tdpW: 200,
     model: { len: 11, wid: 5.5, slots: 2, fans: 2, vram: 8, phases: 5, ring: [1.8, 1.6], shroud: 0x1a2330, accent: 0x38bdf8, die: 1.1 }
   }
 ];

@@ -6,11 +6,13 @@ let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.error('✗', m); } };
 const compIds = new Set(COMPONENTS.map(c => c.id));
 
-ok(GPUS.length === 5, '5 tarjetas');
+ok(GPUS.length >= 50, 'catálogo ≥50 tarjetas');
+ok(new Set(GPUS.map(g => g.id)).size === GPUS.length, 'ids de tarjeta únicos');
 ok(COMPONENTS.length === 12, '12 componentes');
 const fields = ['name', 'location', 'func', 'principle', 'failures', 'symptoms', 'inspection', 'tools', 'solutions', 'warnings'];
 COMPONENTS.forEach(c => fields.forEach(f => ok(c[f] && (!Array.isArray(c[f]) || c[f].length), `${c.id}.${f} presente`)));
-GPUS.forEach(g => ['name', 'arch', 'mem', 'bus', 'connectors', 'cooling', 'internals', 'tdpW', 'model'].forEach(f => ok(g[f], `${g.id}.${f}`)));
+GPUS.forEach(g => { const m = g.model; ok(m.len >= 7 && m.len <= 15 && m.wid >= 5 && m.wid <= 7.1 && m.vram >= 2 && m.fans >= 1 && m.phases >= 2, `${g.id} geometría en rango`); });
+GPUS.forEach(g => ['name', 'arch', 'mem', 'bus', 'tdpW', 'model'].forEach(f => ok(g[f], `${g.id}.${f}`)));
 DISASSEMBLY.forEach(s => s.focus.forEach(id => ok(compIds.has(id), `desmontaje foco ${id}`)));
 ok(SCENARIOS.length === 6, '6 escenarios');
 SCENARIOS.forEach(s => {

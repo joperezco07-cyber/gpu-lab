@@ -8,9 +8,9 @@ Simulador educativo 3D para explorar, desmontar, identificar componentes y diagn
 
 | Requisito | Estado |
 |---|---|
-| 5 tarjetas (RTX 4090, RTX 4060, RX 7900 XTX, Arc A770, GPU genérica) con ficha técnica y geometría diferenciada | ✅ |
+| Catálogo de 54 tarjetas (NVIDIA GTX 10 → RTX 50, AMD RX 580 → RX 9070 XT, Intel Arc A/B y una GPU genérica) con geometría escalada según potencia y bus de memoria | ✅ (no son *todas* las existentes; añadir una = una línea en `CATALOG` de `js/data.js`) |
 | Vistas frontal, posterior, lateral e isométrica; rotar, zoom, desplazar | ✅ |
-| 12 componentes seleccionables con ficha completa (función, principio, fallas, síntomas, inspección, herramientas, soluciones, advertencias), etiquetas on/off | ✅ |
+| Pestañas: Desmontaje, Diagnóstico, Aprender, Progreso. Al tocar una pieza 3D aparece su ficha resumida | ✅ |
 | Despiece (slider) y desmontaje paso a paso con animación y montaje | ✅ |
 | 6 escenarios de diagnóstico (con 2–4 variantes aleatorias cada uno) | ✅ |
 | 9 herramientas virtuales interactivas (resultados simulados) | ✅ |
@@ -112,7 +112,7 @@ Sin dependencias en tiempo de ejecución externas (no usa CDN). Para pruebas: No
 ## 10. Limitaciones conocidas
 
 - Modelos procedurales: no reproducen la geometría exacta de ningún producto; se indica en la interfaz.
-- Datos técnicos (arquitectura, memoria, bus, consumo) son de referencia y pueden variar según fabricante/versión; verifícalos antes de usarlos como material oficial.
+- Los datos del catálogo (arquitectura, memoria, bus, consumo) están escritos de memoria como referencia aproximada y **no se verificaron contra fichas oficiales**; revísalos antes de usarlos como material oficial. Los modelos 3D de las 54 tarjetas son variaciones de una misma plantilla procedural. Datos técnicos y pueden variar según fabricante/versión; verifícalos antes de usarlos como material oficial.
 - Los casos usan evidencia sintética y no sustituyen formación práctica con equipo real ni normas de seguridad eléctrica.
 - No hay cuentas ni servidor: puntuaciones solo locales.
 - No probado en dispositivos físicos Apple/Android en este entorno (solo emulación de viewport en Chrome).

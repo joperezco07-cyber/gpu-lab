@@ -8,19 +8,18 @@ const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const COMP = Object.fromEntries(COMPONENTS.map(c => [c.id, c]));
 
-let viewer = null, gpu = GPUS[0], tab = 'info', selectedComp = null, step = 0;
+let viewer = null, gpu = GPUS[0], tab = 'dis', selectedComp = null, step = 0;
 let level = 'basic';
 let kase = null, toolCleanup = null, quizState = null, identState = null;
 
-const TABS = [['info', 'Tarjeta'], ['comp', 'Componentes'], ['dis', 'Desmontaje'], ['lab', 'Diagnóstico'], ['learn', 'Aprender'], ['prog', 'Progreso']];
+const TABS = [['dis', 'Desmontaje'], ['lab', 'Diagnóstico'], ['learn', 'Aprender'], ['prog', 'Progreso']];
 
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
 /* ---------- Arranque ---------- */
 async function boot() {
-  const sel = $('#gpuSel');
-  sel.innerHTML = GPUS.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
-  sel.onchange = () => { gpu = GPUS.find(g => g.id === sel.value); viewer?.setGPU(gpu); step = 0; selectedComp = null; applyCaseVisuals(); render(); };
+  const sel = $('#gpuSel'); fillSelector();
+  sel.onchange = () => { gpu = GPUS.find(g => g.id === sel.value); viewer?.setGPU(gpu); step = 0; selectedComp = null; $('#pop').hidden = true; specLine(); applyCaseVisuals(); render(); };
   $('#tabs').innerHTML = TABS.map(([id, n]) => `<button data-tab="${id}">${n}</button>`).join('');
   $('#tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); };
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => viewer?.setView(b.dataset.view));
@@ -31,14 +30,14 @@ async function boot() {
   try {
     const { Viewer } = await import('./viewer.js');
     viewer = new Viewer($('#cv'), $('#labels'));
-    viewer.onSelect = (id) => { selectedComp = id; setTab('comp'); };
+    viewer.onSelect = (id) => { selectedComp = id; showPop(id); };
     viewer.setGPU(gpu);
     $('#loading').remove();
   } catch (err) {
     console.error(err);
     $('#loading').innerHTML = '<b>No se pudo iniciar el visor 3D.</b><br>Tu navegador o dispositivo podría no tener WebGL activado. Puedes seguir usando los módulos de texto (componentes, quiz y diagnóstico).';
   }
-  setTab('info');
+  specLine(); setTab('dis');
 }
 
 function setTab(t) {
@@ -50,42 +49,26 @@ function render() {
   $('#tabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   disposeTool();
   const c = $('#content');
-  ({ info: renderInfo, comp: renderComp, dis: renderDis, lab: renderLab, learn: renderLearn, prog: renderProg })[tab](c);
+  ({ dis: renderDis, lab: renderLab, learn: renderLearn, prog: renderProg })[tab](c);
   c.scrollTop = 0;
   if (tab !== 'dis' && tab !== 'lab' && tab !== 'learn') viewer?.setFocus(null);
 }
 function disposeTool() { if (toolCleanup) { toolCleanup(); toolCleanup = null; } }
 
-/* ---------- Tarjeta ---------- */
-function renderInfo(c) {
-  const rows = [['Fabricante', gpu.vendor], ['Arquitectura', gpu.arch], ['Memoria', gpu.mem], ['Bus de memoria', gpu.bus], ['Ancho de banda', gpu.bandwidth], ['Consumo', gpu.tdp], ['Conectores', gpu.connectors], ['Refrigeración', gpu.cooling], ['Componentes internos', gpu.internals]];
-  c.innerHTML = `<h2>${esc(gpu.name)}</h2>
-    <p class="note">⚠️ ${esc(gpu.note)} El modelo 3D es <b>procedural y educativo</b>, no una réplica exacta de un producto comercial.</p>
-    <table class="tbl">${rows.map(r => `<tr><th>${r[0]}</th><td>${esc(r[1])}</td></tr>`).join('')}</table>
-    <h3>Vistas</h3>
-    <div class="row"><button class="btn ghost" data-v="front">Frontal</button><button class="btn ghost" data-v="back">Posterior</button><button class="btn ghost" data-v="side">Lateral</button><button class="btn ghost" data-v="iso">Isométrica</button></div>
-    <p class="muted">Arrastra para rotar · rueda o pellizco para acercar · clic derecho o dos dedos para mover · toca un componente para ver su información.</p>`;
-  c.querySelectorAll('[data-v]').forEach(b => b.onclick = () => viewer?.setView(b.dataset.v));
+/* ---------- Tarjeta (selector) y ficha de pieza ---------- */
+function fillSelector() {
+  const sel = $('#gpuSel');
+  const groups = {};
+  GPUS.forEach(g => (groups[g.vendor] ||= []).push(g));
+  sel.innerHTML = Object.entries(groups).map(([v, a]) => `<optgroup label="${esc(v)}">${a.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')}</optgroup>`).join('');
+  sel.value = gpu.id;
 }
-
-/* ---------- Componentes ---------- */
-function renderComp(c) {
-  const comp = COMP[selectedComp];
-  const list = (a) => `<ul>${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
-  c.innerHTML = `<div class="chips">${COMPONENTS.map(x => `<button class="chip ${x.id === selectedComp ? 'on' : ''}" data-c="${x.id}">${esc(x.name.split(' (')[0])}</button>`).join('')}</div>` +
-    (comp ? `<h2>${esc(comp.name)}</h2>
-      <div class="card"><h4>Ubicación</h4><p>${esc(comp.location)}</p></div>
-      <div class="card"><h4>Función</h4><p>${esc(comp.func)}</p></div>
-      <div class="card"><h4>Principio de funcionamiento</h4><p>${esc(comp.principle)}</p></div>
-      <div class="card"><h4>Fallas comunes</h4>${list(comp.failures)}</div>
-      <div class="card"><h4>Síntomas de avería</h4>${list(comp.symptoms)}</div>
-      <div class="card"><h4>Métodos de inspección</h4>${list(comp.inspection)}</div>
-      <div class="card"><h4>Herramientas necesarias</h4>${list(comp.tools)}</div>
-      <div class="card"><h4>Posibles soluciones</h4>${list(comp.solutions)}</div>
-      <div class="card warn"><h4>⚠️ Advertencias de seguridad</h4>${list(comp.warnings)}</div>` :
-      '<p class="muted">Selecciona un componente en la lista o toca una pieza en el visor 3D.</p>');
-  c.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { selectedComp = b.dataset.c; renderComp(c); });
-  if (comp) viewer?.highlight(comp.id);
+function specLine() { $('#spec').textContent = `${gpu.arch} · ${gpu.mem} · bus ${gpu.bus} · ${gpu.tdp}`; }
+function showPop(id) {
+  const comp = COMP[id]; const p = $('#pop');
+  if (!comp) { p.hidden = true; return; }
+  p.innerHTML = `<button class="x" aria-label="Cerrar">×</button><h4>${esc(comp.name)}</h4><p>${esc(comp.func)}</p><p class="muted"><b>Fallas comunes:</b> ${comp.failures.map(esc).join(' · ')}</p><p class="muted"><b>Ubicación:</b> ${esc(comp.location)}</p>`;
+  p.hidden = false; p.querySelector('.x').onclick = () => { p.hidden = true; viewer?.highlight(null); };
 }
 
 /* ---------- Desmontaje ---------- */
@@ -246,7 +229,7 @@ function renderQuiz(c) {
   const q = quizState; const per = q.lvl === 'basic' ? 10 : 15;
   if (q.i >= q.qs.length) {
     const rec = store.get().quiz[q.lvl]; rec.runs++; rec.best = Math.max(rec.best, q.score); store.save();
-    c.innerHTML = `<h2>Resultado</h2><div class="card okc"><h3>${q.score} / ${q.qs.length * per} pts</h3><p>${q.score >= q.qs.length * per * 0.6 ? 'Buen trabajo.' : 'Repasa la pestaña Componentes y vuelve a intentarlo.'}</p></div><button class="btn" id="ok">Volver</button>`;
+    c.innerHTML = `<h2>Resultado</h2><div class="card okc"><h3>${q.score} / ${q.qs.length * per} pts</h3><p>${q.score >= q.qs.length * per * 0.6 ? 'Buen trabajo.' : 'Repasa el desmontaje (toca las piezas en 3D para ver su ficha) y vuelve a intentarlo.'}</p></div><button class="btn" id="ok">Volver</button>`;
     $('#ok', c).onclick = () => { quizState = null; renderLearn(c); }; return;
   }
   const cur = q.qs[q.i];

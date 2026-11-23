@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070b12">
+  <title>Acceso · GPU LAB</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <main class="auth">
+    <div class="brand">GPU <b>LAB</b><small>2.0</small></div>
+    <h1>Entra a tu clase</h1>
+    <p>Escribe el PIN que te dio tu profesor.</p>
+    <form id="pinForm" novalidate>
+      <label for="pin">PIN de clase</label>
+      <input id="pin" name="pin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" required>
+      <button type="submit">Validar PIN</button>
+      <div id="pinMsg" class="msg" role="status" aria-live="polite"></div>
+    </form>
+    <a class="back" href="index.html">Ir al simulador</a>
+  </main>
+  <script src="vendor/supabase.js"></script>
+  <script type="module" src="js/auth/auth.js"></script>
+</body>
+</html>

@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -7,87 +6,245 @@
   <meta name="theme-color" content="#070b12">
   <title>Acceso · GPU LAB</title>
   <link rel="stylesheet" href="css/auth.css">
+  <style>
+    .login-options {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .login-options button {
+      flex: 1;
+      padding: 11px;
+      cursor: pointer;
+      border: 1px solid #334155;
+      border-radius: 7px;
+      background: transparent;
+      color: inherit;
+    }
+
+    .login-options button.active {
+      background: #0284c7;
+      border-color: #0284c7;
+      color: white;
+    }
+
+    .login-panel[hidden] {
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <main class="auth">
     <div class="brand">GPU <b>LAB</b><small>2.0</small></div>
 
     <h1>Entra a tu clase</h1>
-    <p>Ingresa tu identificador GPU y contraseña.</p>
+    <p>Selecciona tu tipo de acceso.</p>
 
-    <form id="loginForm" novalidate>
-      <label for="publicId">Identificador GPU</label>
-      <input
-        id="publicId"
-        name="publicId"
-        type="text"
-        placeholder="GPU-XXXXXXXXXXXX"
-        autocomplete="username"
-        autocapitalize="characters"
-        spellcheck="false"
-        maxlength="16"
-        required
-      >
+    <div class="login-options">
+      <button type="button" id="studentTab" class="active">
+        Estudiante
+      </button>
 
-      <label for="password">Contraseña</label>
-      <input
-        id="password"
-        name="password"
-        type="password"
-        autocomplete="current-password"
-        required
-      >
+      <button type="button" id="teacherTab">
+        Profesor
+      </button>
+    </div>
 
-      <button type="submit">Iniciar sesión</button>
+    <!-- ACCESO ESTUDIANTE -->
+    <section id="studentPanel" class="login-panel">
+      <form id="studentForm" novalidate>
+        <label for="publicId">Identificador GPU</label>
+        <input
+          id="publicId"
+          name="publicId"
+          type="text"
+          placeholder="GPU-XXXXXXXXXXXX"
+          autocomplete="username"
+          autocapitalize="characters"
+          spellcheck="false"
+          maxlength="16"
+          required
+        >
 
-      <div id="loginMsg" class="msg" role="status" aria-live="polite"></div>
-    </form>
+        <label for="studentPassword">Contraseña</label>
+        <input
+          id="studentPassword"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
 
-    <a class="back" href="register.html">Crear cuenta de estudiante</a>
+        <button type="submit">Iniciar sesión</button>
+
+        <div id="studentMsg" class="msg" role="status"
+          aria-live="polite"></div>
+      </form>
+
+      <a class="back" href="register.html">
+        Crear cuenta de estudiante
+      </a>
+    </section>
+
+    <!-- ACCESO PROFESOR -->
+    <section id="teacherPanel" class="login-panel" hidden>
+      <form id="teacherForm" novalidate>
+        <label for="teacherEmail">Correo electrónico</label>
+        <input
+          id="teacherEmail"
+          name="email"
+          type="email"
+          placeholder="profesor@ejemplo.com"
+          autocomplete="username"
+          required
+        >
+
+        <label for="teacherPassword">Contraseña</label>
+        <input
+          id="teacherPassword"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit">Ingresar como profesor</button>
+        
+        <p style="text-align:center; margin-top:15px;">
+  <a href="#" id="recoverTeacher">
+    ¿Olvidaste tu contraseña?
+  </a>
+</p>
+
+        <div id="teacherMsg" class="msg" role="status"
+          aria-live="polite"></div>
+      </form>
+    </section>
   </main>
 
   <script src="vendor/supabase.js"></script>
 
   <script type="module">
     import { loginStudent } from './js/auth/student-login.js';
+    import { loginTeacher } from './js/auth/teacher-login.js';
+    import { sendTeacherRecovery } from './js/auth/teacher-recovery.js';
 
-    const form = document.getElementById('loginForm');
-    const out = document.getElementById('loginMsg');
-    const btn = form.querySelector('button');
+    const studentTab = document.getElementById('studentTab');
+    const teacherTab = document.getElementById('teacherTab');
 
-    form.addEventListener('submit', async (e) => {
+    const studentPanel = document.getElementById('studentPanel');
+    const teacherPanel = document.getElementById('teacherPanel');
+
+    function showPanel(type) {
+      const isStudent = type === 'student';
+
+      studentPanel.hidden = !isStudent;
+      teacherPanel.hidden = isStudent;
+
+      studentTab.classList.toggle('active', isStudent);
+      teacherTab.classList.toggle('active', !isStudent);
+    }
+
+    studentTab.addEventListener('click', () => showPanel('student'));
+    teacherTab.addEventListener('click', () => showPanel('teacher'));
+
+    // INICIO DE SESIÓN DEL ESTUDIANTE
+    const studentForm = document.getElementById('studentForm');
+    const studentMsg = document.getElementById('studentMsg');
+    const studentBtn = studentForm.querySelector('button');
+
+    studentForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const publicId = document.getElementById('publicId').value;
-      const password = document.getElementById('password').value;
-
-      btn.disabled = true;
-      out.className = 'msg';
-      out.textContent = 'Verificando acceso…';
+      studentBtn.disabled = true;
+      studentMsg.className = 'msg';
+      studentMsg.textContent = 'Verificando acceso…';
 
       try {
-        const result = await loginStudent({ publicId, password });
+        const result = await loginStudent({
+          publicId: document.getElementById('publicId').value,
+          password: document.getElementById('studentPassword').value
+        });
 
         if (!result.ok) {
-          out.className = 'msg bad';
-          out.textContent = result.error;
+          studentMsg.className = 'msg bad';
+          studentMsg.textContent = result.error;
           return;
         }
 
-        out.className = 'msg ok';
-        out.textContent = 'Acceso correcto. Entrando al laboratorio…';
+        studentMsg.className = 'msg ok';
+        studentMsg.textContent = 'Acceso correcto. Entrando al laboratorio…';
 
         window.location.href = 'index.html';
 
       } catch (error) {
         console.error(error);
-        out.className = 'msg bad';
-        out.textContent = 'Ocurrió un error inesperado.';
+        studentMsg.className = 'msg bad';
+        studentMsg.textContent = 'Ocurrió un error inesperado.';
       } finally {
-        btn.disabled = false;
+        studentBtn.disabled = false;
+      }
+    });
+
+    // INICIO DE SESIÓN DEL PROFESOR
+    const teacherForm = document.getElementById('teacherForm');
+    const teacherMsg = document.getElementById('teacherMsg');
+    const teacherBtn = teacherForm.querySelector('button');
+
+    const recoverTeacher = document.getElementById('recoverTeacher');
+
+recoverTeacher.addEventListener('click', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('teacherEmail').value;
+  teacherMsg.className = 'msg';
+  teacherMsg.textContent = 'Enviando correo de recuperación...';
+
+  const result = await sendTeacherRecovery(email);
+
+  if (!result.ok) {
+    teacherMsg.className = 'msg bad';
+    teacherMsg.textContent = result.error;
+    return;
+  }
+
+  teacherMsg.className = 'msg ok';
+  teacherMsg.textContent = result.message;
+});
+
+    teacherForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      teacherBtn.disabled = true;
+      teacherMsg.className = 'msg';
+      teacherMsg.textContent = 'Verificando acceso…';
+
+      try {
+        const result = await loginTeacher({
+          email: document.getElementById('teacherEmail').value,
+          password: document.getElementById('teacherPassword').value
+        });
+
+        if (!result.ok) {
+          teacherMsg.className = 'msg bad';
+          teacherMsg.textContent = result.error;
+          return;
+        }
+
+        teacherMsg.className = 'msg ok';
+        teacherMsg.textContent = 'Acceso correcto. Abriendo panel…';
+
+        window.location.href = 'teacher.html';
+
+      } catch (error) {
+        console.error(error);
+        teacherMsg.className = 'msg bad';
+        teacherMsg.textContent = 'Ocurrió un error inesperado.';
+      } finally {
+        teacherBtn.disabled = false;
       }
     });
   </script>
 </body>
 </html>
-

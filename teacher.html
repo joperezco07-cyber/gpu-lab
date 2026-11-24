@@ -1,0 +1,283 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070b12">
+  <title>Panel del profesor · GPU LAB</title>
+  <link rel="stylesheet" href="css/auth.css">
+  <style>
+    body {
+      visibility: hidden;
+      background: #070b12;
+      color: #e5edf7;
+    }
+
+    .dashboard {
+      width: min(1100px, 94%);
+      margin: 35px auto;
+    }
+
+    .toolbar, .card {
+      background: #111c2b;
+      border: 1px solid #26364a;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button, select {
+      padding: 10px 14px;
+      border-radius: 7px;
+      border: 1px solid #33465d;
+      cursor: pointer;
+    }
+
+    button {
+      background: #0284c7;
+      color: white;
+    }
+
+    select {
+      background: #0b1523;
+      color: white;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #26364a;
+    }
+
+    th {
+      color: #38bdf8;
+    }
+
+    .muted {
+      color: #9aabc0;
+    }
+
+    .error {
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <main class="dashboard">
+    <header class="toolbar">
+      <div>
+        <h1>GPU LAB · Profesor</h1>
+        <p class="muted">Panel de calificaciones</p>
+      </div>
+      <button id="logout">Cerrar sesión</button>
+    </header>
+
+    <section class="card">
+      <h2>Mis clases</h2>
+      <select id="classSelect">
+        <option value="">Cargando clases...</option>
+      </select>
+    </section>
+
+    <section class="card">
+      <h2>Calificaciones de estudiantes</h2>
+      <p id="status" class="muted">Cargando información...</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Estudiante</th>
+              <th>Actividad</th>
+              <th>Nivel</th>
+              <th>Nota</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/supabase.js"></script>
+
+  <script type="module">
+    import { db } from './js/auth/session.js';
+
+    const classSelect = document.getElementById('classSelect');
+    const resultsBody = document.getElementById('resultsBody');
+    const status = document.getElementById('status');
+
+    let currentClassId = '';
+
+    async function start() {
+      const { data: { session }, error } = await db.auth.getSession();
+
+      if (error || !session) {
+        window.location.replace('login.html');
+        return;
+      }
+
+      const { data: profile, error: profileError } = await db
+        .from('profiles')
+        .select('role, active, full_name')
+        .eq('id', session.user.id)
+        .single();
+
+      if (
+        profileError ||
+        profile?.role !== 'teacher' ||
+        profile?.active !== true
+      ) {
+        await db.auth.signOut();
+        window.location.replace('login.html');
+        return;
+      }
+
+      document.body.style.visibility = 'visible';
+
+      document.querySelector('h1').textContent =
+        `GPU LAB · ${profile.full_name || 'Profesor'}`;
+
+      await loadClasses();
+    }
+
+    async function loadClasses() {
+      const { data, error } = await db
+        .from('classes')
+        .select('id, name')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        status.textContent = 'No se pudieron cargar las clases.';
+        console.error(error);
+        return;
+      }
+
+      classSelect.innerHTML = '';
+
+      if (!data?.length) {
+        classSelect.innerHTML =
+          '<option value="">No tienes clases asignadas</option>';
+        status.textContent = 'No hay clases disponibles.';
+        return;
+      }
+
+      data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.name;
+        classSelect.appendChild(option);
+      });
+
+      currentClassId = classSelect.value;
+      await loadResults();
+    }
+
+    async function loadResults() {
+      resultsBody.innerHTML = '';
+      status.textContent = 'Cargando calificaciones...';
+
+      const { data: memberships, error: membershipError } = await db
+        .from('class_memberships')
+        .select('student_id')
+        .eq('class_id', currentClassId);
+
+      if (membershipError) {
+        status.textContent = 'Error consultando matrículas.';
+        console.error(membershipError);
+        return;
+      }
+
+      if (!memberships?.length) {
+        status.textContent = 'Todavía no hay estudiantes matriculados.';
+        return;
+      }
+
+      const studentIds = memberships.map(m => m.student_id);
+
+      const { data: students, error: studentsError } = await db
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', studentIds);
+
+      if (studentsError) {
+        status.textContent = 'Error consultando estudiantes.';
+        console.error(studentsError);
+        return;
+      }
+
+      const { data: results, error: resultsError } = await db
+        .from('activity_results')
+        .select('student_id, activity_name, level, score, max_score, completed_at')
+        .eq('class_id', currentClassId)
+        .order('completed_at', { ascending: false });
+
+      if (resultsError) {
+        status.textContent = 'Error consultando calificaciones.';
+        console.error(resultsError);
+        return;
+      }
+
+      const names = new Map(
+        students.map(s => [s.id, s.full_name])
+      );
+
+      results.forEach(result => {
+        const tr = document.createElement('tr');
+
+        const values = [
+          names.get(result.student_id) || 'Estudiante',
+          result.activity_name,
+          result.level || 'General',
+          `${result.score} / ${result.max_score}`,
+          new Date(result.completed_at).toLocaleString('es-CR')
+        ];
+
+        values.forEach(value => {
+          const td = document.createElement('td');
+          td.textContent = value;
+          tr.appendChild(td);
+        });
+
+        resultsBody.appendChild(tr);
+      });
+
+      status.textContent =
+        `${students.length} estudiantes · ${results.length} calificaciones`;
+    }
+
+    classSelect.addEventListener('change', async () => {
+      currentClassId = classSelect.value;
+      await loadResults();
+    });
+
+    document.getElementById('logout').addEventListener('click', async () => {
+      await db.auth.signOut();
+      window.location.replace('login.html');
+    });
+
+    start();
+  </script>
+</body>
+</html>

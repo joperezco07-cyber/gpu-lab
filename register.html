@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070b12">
+  <title>Registro de estudiante · GPU LAB</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <main class="auth">
+    <div class="brand">GPU <b>LAB</b><small>2.0</small></div>
+
+    <h1>Crear cuenta de estudiante</h1>
+    <p>Completa los datos para ingresar a tu clase.</p>
+
+    <form id="registerForm" novalidate>
+      <label for="name">Nombre completo</label>
+      <input
+        id="name"
+        name="name"
+        type="text"
+        autocomplete="name"
+        minlength="2"
+        maxlength="120"
+        required
+      >
+
+      <label for="pin">PIN de clase</label>
+      <input
+        id="pin"
+        name="pin"
+        type="text"
+        autocomplete="off"
+        autocapitalize="characters"
+        spellcheck="false"
+        maxlength="32"
+        required
+      >
+
+      <label for="password">Crear contraseña</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        autocomplete="new-password"
+        minlength="8"
+        maxlength="72"
+        required
+      >
+
+      <label for="confirmPassword">Confirmar contraseña</label>
+      <input
+        id="confirmPassword"
+        name="confirmPassword"
+        type="password"
+        autocomplete="new-password"
+        minlength="8"
+        maxlength="72"
+        required
+      >
+
+      <button type="submit">Crear cuenta</button>
+
+      <div id="registerMsg" class="msg" role="status" aria-live="polite"></div>
+    </form>
+
+    <a class="back" href="login.html">Ya tengo una cuenta</a>
+  </main>
+
+  <script type="module">
+    import { registerStudent } from './js/auth/register.js';
+
+    const form = document.getElementById('registerForm');
+    const out = document.getElementById('registerMsg');
+    const btn = form.querySelector('button');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value.trim();
+      const pin = document.getElementById('pin').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (password !== confirmPassword) {
+        out.className = 'msg bad';
+        out.textContent = 'Las contraseñas no coinciden.';
+        return;
+      }
+
+      btn.disabled = true;
+      out.className = 'msg';
+      out.textContent = 'Creando cuenta…';
+
+      try {
+        const result = await registerStudent({ name, pin, password });
+
+        if (!result.ok) {
+          out.className = 'msg bad';
+          out.textContent = result.error;
+          return;
+        }
+
+        out.className = 'msg ok';
+        out.textContent =
+          `¡Cuenta creada! Tu identificador es ${result.publicId}. Guárdalo para iniciar sesión.`;
+
+        form.reset();
+      } catch (error) {
+        console.error(error);
+        out.className = 'msg bad';
+        out.textContent = 'Ocurrió un error inesperado.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

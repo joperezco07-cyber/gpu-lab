@@ -1,5 +1,10 @@
 <!doctype html>
 <html lang="es">
+<style>
+  body {
+    visibility: hidden;
+  }
+</style>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -39,6 +44,38 @@
     </aside>
   </main>
   <noscript><p style="padding:2rem;color:#fff">GPU LAB necesita JavaScript.</p></noscript>
-  <script type="module" src="js/main.js"></script>
+  <script type="module">
+  import { db } from './js/auth/session.js';
+
+  try {
+    const { data: { session }, error: sessionError } =
+      await db.auth.getSession();
+
+    if (sessionError || !session) {
+      window.location.replace('login.html');
+    } else {
+      const { data: profile, error: profileError } = await db
+        .from('profiles')
+        .select('role, active')
+        .eq('id', session.user.id)
+        .single();
+
+      if (
+        profileError ||
+        profile?.role !== 'student' ||
+        profile?.active !== true
+      ) {
+        await db.auth.signOut();
+        window.location.replace('login.html');
+      } else {
+        document.body.style.visibility = 'visible';
+        await import('./js/main.js');
+      }
+    }
+  } catch (error) {
+    console.error('Error verificando la sesión:', error);
+    window.location.replace('login.html');
+  }
+</script>
 </body>
 </html>

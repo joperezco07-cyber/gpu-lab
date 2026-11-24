@@ -2,6 +2,7 @@
 import { GPUS, COMPONENTS, DISASSEMBLY, SCENARIOS, REPAIRS, QUIZ } from './data.js';
 import { TOOLS, buildEvidence, renderTool } from './tools.js';
 import { store } from './store.js';
+import { saveStudentResult } from './auth/results.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -177,7 +178,7 @@ function mountTool(c) {
   toolCleanup = renderTool(kase.tool, $('#tb', host), { ev: kase.ev, def: gpu });
 }
 
-function submitCase(c) {
+async function submitCase(c) {
   const k = kase; const f = new FormData($('#dx', c));
   const cause = f.get('cause');
   if (!cause) { toast('Elige una causa probable'); return; }
@@ -193,8 +194,26 @@ function submitCase(c) {
   k.stage = 'done'; disposeTool(); applyCaseVisuals();
   const st = store.get(); const rec = st.scenarios[k.scn.id] || (st.scenarios[k.scn.id] = {});
   rec[k.level] = Math.max(rec[k.level] || 0, total);
-  st.answered++; if (ok) st.correct++; store.save();
-  renderCase(c);
+st.answered++;
+if (ok) st.correct++;
+store.save();
+
+c.innerHTML = '<p class="note">Guardando tu calificación...</p>';
+
+const result = await saveStudentResult({
+  activityType: 'diagnostic',
+  activityId: `diagnostic-${k.scn.id}-${k.level}`,
+  activityName: k.scn.title,
+  level: k.level,
+  score: total,
+  maxScore: 100
+});
+
+if (!result.ok) {
+  toast('No se pudo guardar la nota en el servidor. Tu progreso local se conserva.');
+}
+
+renderCase(c);
 }
 
 function resultHTML(k) {
@@ -225,13 +244,51 @@ function renderLearn(c) {
   $('#idt', c)?.addEventListener('click', () => startIdentify(c));
 }
 
-function renderQuiz(c) {
+async function renderQuiz(c) {
   const q = quizState; const per = q.lvl === 'basic' ? 10 : 15;
-  if (q.i >= q.qs.length) {
-    const rec = store.get().quiz[q.lvl]; rec.runs++; rec.best = Math.max(rec.best, q.score); store.save();
-    c.innerHTML = `<h2>Resultado</h2><div class="card okc"><h3>${q.score} / ${q.qs.length * per} pts</h3><p>${q.score >= q.qs.length * per * 0.6 ? 'Buen trabajo.' : 'Repasa el desmontaje (toca las piezas en 3D para ver su ficha) y vuelve a intentarlo.'}</p></div><button class="btn" id="ok">Volver</button>`;
-    $('#ok', c).onclick = () => { quizState = null; renderLearn(c); }; return;
+
+if (q.i >= q.qs.length) {
+  const rec = store.get().quiz[q.lvl];
+
+  rec.runs++;
+  rec.best = Math.max(rec.best, q.score);
+  store.save();
+
+  if (!q.saved) {
+    q.saved = true;
+
+    c.innerHTML = '<p class="note">Guardando tu calificación...</p>';
+
+    const result = await saveStudentResult({
+      activityType: 'quiz',
+      activityId: `quiz-${q.lvl}`,
+      activityName: `Quiz ${q.lvl === 'basic' ? 'Básico' : 'Avanzado'}`,
+      level: q.lvl,
+      score: q.score,
+      maxScore: q.qs.length * per
+    });
+
+    if (!result.ok) {
+      toast('No se pudo guardar la nota en el servidor. Tu progreso local se conserva.');
+    }
   }
+
+  c.innerHTML = `<h2>Resultado</h2>
+    <div class="card okc">
+      <h3>${q.score} / ${q.qs.length * per} pts</h3>
+      <p>${q.score >= q.qs.length * per * 0.6
+        ? 'Buen trabajo.'
+        : 'Repasa el desmontaje (toca las piezas en 3D para ver su ficha) y vuelve a intentarlo.'}</p>
+    </div>
+    <button class="btn" id="ok">Volver</button>`;
+
+  $('#ok', c).onclick = () => {
+    quizState = null;
+    renderLearn(c);
+  };
+
+  return;
+}
   const cur = q.qs[q.i];
   c.innerHTML = `<p class="muted">Pregunta ${q.i + 1} de ${q.qs.length} · ${q.score} pts</p><h3>${esc(cur.q)}</h3>
     <div class="opts">${cur.o.map((o, i) => `<button class="optb" data-i="${i}">${esc(o)}</button>`).join('')}</div><div id="fb"></div>`;
@@ -251,14 +308,43 @@ function startIdentify(c) {
   viewer.onPick = (id) => pickIdent(id, c);
   renderLearn(c);
 }
-function renderIdent(c) {
+async function renderIdent(c) {
   const s = identState;
-  if (s.i >= s.qs.length) {
-    const rec = store.get().identify; rec.runs++; rec.best = Math.max(rec.best, s.score); store.save();
-    const sc = s.score; stopIdentify();
-    c.innerHTML = `<h2>Resultado</h2><div class="card okc"><h3>${sc} / 80 pts</h3></div><button class="btn" id="ok">Volver</button>`;
-    $('#ok', c).onclick = () => renderLearn(c); return;
+  
+if (s.i >= s.qs.length) {
+  const rec = store.get().identify;
+
+  rec.runs++;
+  rec.best = Math.max(rec.best, s.score);
+  store.save();
+
+  const sc = s.score;
+  stopIdentify();
+
+  c.innerHTML = '<p class="note">Guardando tu calificación...</p>';
+
+  const result = await saveStudentResult({
+    activityType: 'identify',
+    activityId: 'identify-3d',
+    activityName: 'Identificación de componentes 3D',
+    level: null,
+    score: sc,
+    maxScore: 80
+  });
+
+  if (!result.ok) {
+    toast('No se pudo guardar la nota en el servidor. Tu progreso local se conserva.');
   }
+
+  c.innerHTML = `<h2>Resultado</h2>
+    <div class="card okc">
+      <h3>${sc} / 80 pts</h3>
+    </div>
+    <button class="btn" id="ok">Volver</button>`;
+
+  $('#ok', c).onclick = () => renderLearn(c);
+  return;
+}
   c.innerHTML = `<p class="muted">Ronda ${s.i + 1} de ${s.qs.length} · ${s.score} pts</p><h3>🎯 Toca en el visor 3D: <span class="hl">${esc(s.qs[s.i].name)}</span></h3><p class="muted">Las etiquetas están ocultas durante el juego. Rota y acerca el modelo si lo necesitas.</p><button class="btn ghost" id="stop">Salir</button>`;
   $('#stop', c).onclick = () => { stopIdentify(); renderLearn(c); };
 }

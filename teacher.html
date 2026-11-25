@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#070b12">
   <title>Panel del profesor · GPU LAB</title>
   <link rel="stylesheet" href="css/auth.css">
+
   <style>
     body {
       visibility: hidden;
@@ -19,7 +20,8 @@
       margin: 35px auto;
     }
 
-    .toolbar, .card {
+    .toolbar,
+    .card {
       background: #111c2b;
       border: 1px solid #26364a;
       border-radius: 12px;
@@ -35,7 +37,8 @@
       flex-wrap: wrap;
     }
 
-    button, select {
+    button,
+    select {
       padding: 10px 14px;
       border-radius: 7px;
       border: 1px solid #33465d;
@@ -47,9 +50,58 @@
       color: white;
     }
 
+    button:hover {
+      background: #0369a1;
+    }
+
     select {
       background: #0b1523;
       color: white;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .summary-item {
+      background: #0b1523;
+      border: 1px solid #26364a;
+      border-radius: 10px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .summary-item span {
+      color: #9aabc0;
+      font-size: 14px;
+    }
+
+    .summary-item strong {
+      color: #38bdf8;
+      font-size: 26px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin: 18px 0;
+      flex-wrap: wrap;
+    }
+
+    .filters input,
+    .filters select {
+      flex: 1;
+      min-width: 200px;
+      background: #0b1523;
+      color: white;
+      border: 1px solid #33465d;
+      border-radius: 7px;
+      padding: 12px;
     }
 
     .table-wrap {
@@ -62,7 +114,8 @@
       min-width: 650px;
     }
 
-    th, td {
+    th,
+    td {
       padding: 12px;
       text-align: left;
       border-bottom: 1px solid #26364a;
@@ -79,28 +132,100 @@
     .error {
       color: #fca5a5;
     }
+
+    .empty {
+      text-align: center;
+      color: #9aabc0;
+      padding: 24px;
+    }
+
+    @media (max-width: 650px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dashboard {
+        width: 96%;
+        margin: 18px auto;
+      }
+
+      .toolbar,
+      .card {
+        padding: 15px;
+      }
+    }
   </style>
 </head>
+
 <body>
   <main class="dashboard">
+
     <header class="toolbar">
       <div>
         <h1>GPU LAB · Profesor</h1>
         <p class="muted">Panel de calificaciones</p>
       </div>
+
       <button id="logout">Cerrar sesión</button>
     </header>
 
     <section class="card">
       <h2>Mis clases</h2>
+
       <select id="classSelect">
         <option value="">Cargando clases...</option>
       </select>
     </section>
 
     <section class="card">
+      <h2>Resumen general</h2>
+
+      <div class="summary-grid">
+
+        <div class="summary-item">
+          <span>Estudiantes</span>
+          <strong id="totalStudents">0</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Calificaciones</span>
+          <strong id="totalResults">0</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Promedio general</span>
+          <strong id="generalAverage">0%</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Actividades realizadas</span>
+          <strong id="totalActivities">0</strong>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Calificaciones de estudiantes</h2>
-      <p id="status" class="muted">Cargando información...</p>
+
+      <p id="status" class="muted">
+        Cargando información...
+      </p>
+
+      <div class="filters">
+
+        <input
+          type="search"
+          id="studentFilter"
+          placeholder="Buscar estudiante..."
+          aria-label="Buscar estudiante"
+        >
+
+        <select id="activityFilter">
+          <option value="">Todas las actividades</option>
+        </select>
+
+      </div>
 
       <div class="table-wrap">
         <table>
@@ -113,10 +238,12 @@
               <th>Fecha</th>
             </tr>
           </thead>
+
           <tbody id="resultsBody"></tbody>
         </table>
       </div>
     </section>
+
   </main>
 
   <script src="vendor/supabase.js"></script>
@@ -128,17 +255,34 @@
     const resultsBody = document.getElementById('resultsBody');
     const status = document.getElementById('status');
 
+    const studentFilter = document.getElementById('studentFilter');
+    const activityFilter = document.getElementById('activityFilter');
+
+    const totalStudents = document.getElementById('totalStudents');
+    const totalResults = document.getElementById('totalResults');
+    const generalAverage = document.getElementById('generalAverage');
+    const totalActivities = document.getElementById('totalActivities');
+
     let currentClassId = '';
+    let allResults = [];
+    let studentNames = new Map();
+    let loading = false;
 
     async function start() {
-      const { data: { session }, error } = await db.auth.getSession();
+      const {
+        data: { session },
+        error
+      } = await db.auth.getSession();
 
       if (error || !session) {
         window.location.replace('login.html');
         return;
       }
 
-      const { data: profile, error: profileError } = await db
+      const {
+        data: profile,
+        error: profileError
+      } = await db
         .from('profiles')
         .select('role, active, full_name')
         .eq('id', session.user.id)
@@ -179,7 +323,9 @@
       if (!data?.length) {
         classSelect.innerHTML =
           '<option value="">No tienes clases asignadas</option>';
+
         status.textContent = 'No hay clases disponibles.';
+        resetDashboard();
         return;
       }
 
@@ -191,86 +337,237 @@
       });
 
       currentClassId = classSelect.value;
+
       await loadResults();
     }
 
-    async function loadResults() {
+    function resetDashboard() {
+      allResults = [];
+      studentNames = new Map();
+
+      totalStudents.textContent = '0';
+      totalResults.textContent = '0';
+      generalAverage.textContent = '0%';
+      totalActivities.textContent = '0';
+
       resultsBody.innerHTML = '';
+      activityFilter.innerHTML =
+        '<option value="">Todas las actividades</option>';
+    }
+
+    async function loadResults() {
+      if (!currentClassId || loading) return;
+
+      loading = true;
+      resetDashboard();
+
       status.textContent = 'Cargando calificaciones...';
 
-      const { data: memberships, error: membershipError } = await db
-        .from('class_memberships')
-        .select('student_id')
-        .eq('class_id', currentClassId);
+      try {
+        const {
+          data: memberships,
+          error: membershipError
+        } = await db
+          .from('class_memberships')
+          .select('student_id')
+          .eq('class_id', currentClassId);
 
-      if (membershipError) {
-        status.textContent = 'Error consultando matrículas.';
-        console.error(membershipError);
-        return;
-      }
+        if (membershipError) {
+          status.textContent = 'Error consultando matrículas.';
+          console.error(membershipError);
+          return;
+        }
 
-      if (!memberships?.length) {
-        status.textContent = 'Todavía no hay estudiantes matriculados.';
-        return;
-      }
-
-      const studentIds = memberships.map(m => m.student_id);
-
-      const { data: students, error: studentsError } = await db
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', studentIds);
-
-      if (studentsError) {
-        status.textContent = 'Error consultando estudiantes.';
-        console.error(studentsError);
-        return;
-      }
-
-      const { data: results, error: resultsError } = await db
-        .from('activity_results')
-        .select('student_id, activity_name, level, score, max_score, completed_at')
-        .eq('class_id', currentClassId)
-        .order('completed_at', { ascending: false });
-
-      if (resultsError) {
-        status.textContent = 'Error consultando calificaciones.';
-        console.error(resultsError);
-        return;
-      }
-
-      const names = new Map(
-        students.map(s => [s.id, s.full_name])
-      );
-
-      results.forEach(result => {
-        const tr = document.createElement('tr');
-
-        const values = [
-          names.get(result.student_id) || 'Estudiante',
-          result.activity_name,
-          result.level || 'General',
-          `${result.score} / ${result.max_score}`,
-          new Date(result.completed_at).toLocaleString('es-CR')
+        const studentIds = [
+          ...new Set((memberships || []).map(m => m.student_id))
         ];
 
-        values.forEach(value => {
-          const td = document.createElement('td');
-          td.textContent = value;
-          tr.appendChild(td);
-        });
+        if (studentIds.length === 0) {
+          status.textContent = 'Todavía no hay estudiantes matriculados.';
+          return;
+        }
 
-        resultsBody.appendChild(tr);
+        const {
+          data: students,
+          error: studentsError
+        } = await db
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', studentIds);
+
+        if (studentsError) {
+          status.textContent = 'Error consultando estudiantes.';
+          console.error(studentsError);
+          return;
+        }
+
+        studentNames = new Map(
+          (students || []).map(s => [s.id, s.full_name])
+        );
+
+        const {
+          data: results,
+          error: resultsError
+        } = await db
+          .from('activity_results')
+          .select(
+            'student_id, activity_id, activity_name, level, score, max_score, completed_at'
+          )
+          .eq('class_id', currentClassId)
+          .order('completed_at', { ascending: false });
+
+        if (resultsError) {
+          status.textContent = 'Error consultando calificaciones.';
+          console.error(resultsError);
+          return;
+        }
+
+        allResults = results || [];
+
+        updateSummary(studentIds.length);
+        populateActivityFilter();
+        renderResults();
+
+      } catch (error) {
+        console.error('Error cargando el panel:', error);
+        status.textContent = 'Ocurrió un error al cargar la información.';
+      } finally {
+        loading = false;
+      }
+    }
+
+    function updateSummary(studentCount) {
+      totalStudents.textContent = studentCount;
+      totalResults.textContent = allResults.length;
+
+      const validResults = allResults.filter(result =>
+        Number.isFinite(Number(result.score)) &&
+        Number.isFinite(Number(result.max_score)) &&
+        Number(result.max_score) > 0
+      );
+
+      let average = 0;
+
+      if (validResults.length > 0) {
+        const sum = validResults.reduce((total, result) => {
+          return total +
+            (Number(result.score) / Number(result.max_score)) * 100;
+        }, 0);
+
+        average = sum / validResults.length;
+      }
+
+      generalAverage.textContent =
+        `${average.toFixed(1)}%`;
+
+      const activities = new Set(
+        allResults.map(result =>
+          result.activity_id || result.activity_name
+        )
+      );
+
+      totalActivities.textContent = activities.size;
+    }
+
+    function populateActivityFilter() {
+      const previousValue = activityFilter.value;
+
+      activityFilter.innerHTML =
+        '<option value="">Todas las actividades</option>';
+
+      const activities = [
+        ...new Set(
+          allResults.map(result => result.activity_name).filter(Boolean)
+        )
+      ].sort((a, b) => a.localeCompare(b, 'es'));
+
+      activities.forEach(activity => {
+        const option = document.createElement('option');
+        option.value = activity;
+        option.textContent = activity;
+        activityFilter.appendChild(option);
       });
 
+      if (activities.includes(previousValue)) {
+        activityFilter.value = previousValue;
+      }
+    }
+
+    function renderResults() {
+      resultsBody.innerHTML = '';
+
+      const search = studentFilter.value
+        .trim()
+        .toLocaleLowerCase('es');
+
+      const selectedActivity = activityFilter.value;
+
+      const filteredResults = allResults.filter(result => {
+        const name = (
+          studentNames.get(result.student_id) || 'Estudiante'
+        ).toLocaleLowerCase('es');
+
+        const matchesStudent = name.includes(search);
+
+        const matchesActivity =
+          !selectedActivity ||
+          result.activity_name === selectedActivity;
+
+        return matchesStudent && matchesActivity;
+      });
+
+      if (filteredResults.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+
+        td.colSpan = 5;
+        td.className = 'empty';
+        td.textContent = allResults.length
+          ? 'No se encontraron resultados con esos filtros.'
+          : 'Todavía no hay calificaciones registradas.';
+
+        tr.appendChild(td);
+        resultsBody.appendChild(tr);
+      } else {
+        filteredResults.forEach(result => {
+          const tr = document.createElement('tr');
+
+          const values = [
+            studentNames.get(result.student_id) || 'Estudiante',
+            result.activity_name || 'Actividad',
+            result.level || 'General',
+            `${result.score} / ${result.max_score}`,
+            result.completed_at
+              ? new Date(result.completed_at).toLocaleString('es-CR')
+              : 'Sin fecha'
+          ];
+
+          values.forEach(value => {
+            const td = document.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
+          });
+
+          resultsBody.appendChild(tr);
+        });
+      }
+
       status.textContent =
-        `${students.length} estudiantes · ${results.length} calificaciones`;
+        `${filteredResults.length} de ${allResults.length} calificaciones mostradas`;
     }
 
     classSelect.addEventListener('change', async () => {
       currentClassId = classSelect.value;
+
+      studentFilter.value = '';
+      activityFilter.value = '';
+
       await loadResults();
     });
+
+    studentFilter.addEventListener('input', renderResults);
+
+    activityFilter.addEventListener('change', renderResults);
 
     document.getElementById('logout').addEventListener('click', async () => {
       await db.auth.signOut();

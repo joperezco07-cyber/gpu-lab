@@ -154,6 +154,93 @@
         padding: 15px;
       }
     }
+
+
+
+.progress-track {
+  width: 100%;
+  min-width: 100px;
+  height: 10px;
+  background: #26364a;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.low {
+  background: #ef4444;
+}
+
+.progress-fill.medium {
+  background: #f59e0b;
+}
+
+.progress-fill.high {
+  background: #22c55e;
+}
+
+.progress-label {
+  display: block;
+  color: #9aabc0;
+  font-size: 12px;
+  margin-top: 5px;
+  font-weight: 600;
+}
+
+.performance-status {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.performance-status.low {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.performance-status.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.performance-status.high {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+
+
+.progress-track {
+  width: 100%;
+  min-width: 100px;
+  height: 9px;
+  background: #26364a;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #0284c7;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.progress-label {
+  display: block;
+  color: #9aabc0;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
   </style>
 </head>
 
@@ -204,7 +291,36 @@
 
       </div>
     </section>
+<!-- NUEVA SECCIÓN -->
+<section class="card">
+  <h2>Ranking y rendimiento general</h2>
 
+  <p class="muted">
+    Comparación del rendimiento de todos los estudiantes de la clase.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Posición</th>
+          <th>Estudiante</th>
+          <th>Mejor nota</th>
+          <th>Promedio general</th>
+          <th>Actividades</th>
+        </tr>
+      </thead>
+
+      <tbody id="rankingBody">
+        <tr>
+          <td colspan="5" class="empty">
+            Cargando ranking...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
     <section class="card">
       <h2>Calificaciones de estudiantes</h2>
 
@@ -236,6 +352,7 @@
               <th>Nivel</th>
               <th>Nota</th>
               <th>Fecha</th>
+              <th>Ficha</th>
             </tr>
           </thead>
 
@@ -243,6 +360,57 @@
         </table>
       </div>
     </section>
+
+
+    <section class="card" id="studentDetails" hidden>
+      <h2>Ficha individual del estudiante</h2>
+
+      <h3 id="detailStudentName">Nombre del estudiante</h3>
+
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span>Calificaciones</span>
+          <strong id="detailTotalResults">0</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Promedio individual</span>
+          <strong id="detailAverage">0%</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Actividades realizadas</span>
+          <strong id="detailActivities">0</strong>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 25px;">Historial de actividades</h3>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Actividad</th>
+              <th>Nivel</th>
+              <th>Nota</th>
+              <th>Fecha</th>
+              <th>Rendimiento</th>
+            </tr>
+          </thead>
+
+          <tbody id="studentHistoryBody"></tbody>
+        </table>
+      </div>
+
+      <button
+        type="button"
+        id="closeStudentDetails"
+        style="margin-top: 18px;"
+      >
+        Cerrar ficha
+      </button>
+    </section>
+
 
   </main>
 
@@ -262,6 +430,14 @@
     const totalResults = document.getElementById('totalResults');
     const generalAverage = document.getElementById('generalAverage');
     const totalActivities = document.getElementById('totalActivities');
+    const rankingBody = document.getElementById('rankingBody');
+    
+    const studentDetails = document.getElementById('studentDetails');
+    const detailStudentName = document.getElementById('detailStudentName');
+    const detailTotalResults = document.getElementById('detailTotalResults');
+    const detailAverage = document.getElementById('detailAverage');
+    const detailActivities = document.getElementById('detailActivities');
+    const studentHistoryBody = document.getElementById('studentHistoryBody');
 
     let currentClassId = '';
     let allResults = [];
@@ -355,6 +531,100 @@
         '<option value="">Todas las actividades</option>';
     }
 
+
+function renderRanking() {
+  rankingBody.innerHTML = '';
+
+  const students = [...studentNames.entries()].map(
+    ([studentId, studentName]) => {
+      const results = allResults.filter(
+        result => result.student_id === studentId
+      );
+
+      const validResults = results.filter(result =>
+        Number.isFinite(Number(result.score)) &&
+        Number.isFinite(Number(result.max_score)) &&
+        Number(result.max_score) > 0
+      );
+
+      const percentages = validResults.map(result =>
+        (Number(result.score) / Number(result.max_score)) * 100
+      );
+
+      const bestScore = percentages.length
+        ? Math.max(...percentages)
+        : null;
+
+      const average = percentages.length
+        ? percentages.reduce((sum, value) => sum + value, 0) /
+          percentages.length
+        : null;
+
+      const activities = new Set(
+        results
+          .filter(result => result.activity_id || result.activity_name)
+          .map(result => result.activity_id || result.activity_name)
+      );
+
+      return {
+        studentName,
+        bestScore,
+        average,
+        activities: activities.size
+      };
+    }
+  );
+
+  students.sort((a, b) => {
+    if (a.bestScore === null && b.bestScore !== null) return 1;
+    if (a.bestScore !== null && b.bestScore === null) return -1;
+
+    if (a.bestScore !== b.bestScore) {
+      return (b.bestScore ?? 0) - (a.bestScore ?? 0);
+    }
+
+    return (b.average ?? 0) - (a.average ?? 0);
+  });
+
+  if (students.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+
+    td.colSpan = 5;
+    td.className = 'empty';
+    td.textContent = 'No hay estudiantes para mostrar.';
+
+    tr.appendChild(td);
+    rankingBody.appendChild(tr);
+    return;
+  }
+
+  students.forEach((student, index) => {
+    const tr = document.createElement('tr');
+
+    const values = [
+      `#${index + 1}`,
+      student.studentName || 'Estudiante',
+      student.bestScore !== null
+        ? `${student.bestScore.toFixed(1)}%`
+        : 'Pendiente',
+      student.average !== null
+        ? `${student.average.toFixed(1)}%`
+        : 'Pendiente',
+      student.activities
+    ];
+
+    values.forEach(value => {
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+
+    rankingBody.appendChild(tr);
+  });
+}
+
+
     async function loadResults() {
       if (!currentClassId || loading) return;
 
@@ -383,8 +653,13 @@
         ];
 
         if (studentIds.length === 0) {
-          status.textContent = 'Todavía no hay estudiantes matriculados.';
-          return;
+        studentNames = new Map();
+        allResults = [];
+
+        renderRanking();
+
+        status.textContent = 'Todavía no hay estudiantes matriculados.';
+        return;
         }
 
         const {
@@ -427,6 +702,7 @@
         updateSummary(studentIds.length);
         populateActivityFilter();
         renderResults();
+        renderRanking();
 
       } catch (error) {
         console.error('Error cargando el panel:', error);
@@ -493,6 +769,146 @@
       }
     }
 
+
+
+function openStudentDetails(studentId) {
+  const studentResults = allResults.filter(
+    result => result.student_id === studentId
+  );
+
+  const studentName =
+    studentNames.get(studentId) || 'Estudiante';
+
+  detailStudentName.textContent = studentName;
+  detailTotalResults.textContent = studentResults.length;
+
+  const validResults = studentResults.filter(result =>
+    Number.isFinite(Number(result.score)) &&
+    Number.isFinite(Number(result.max_score)) &&
+    Number(result.max_score) > 0
+  );
+
+  let average = 0;
+
+  if (validResults.length > 0) {
+    const sum = validResults.reduce((total, result) => {
+      return total +
+        (Number(result.score) / Number(result.max_score)) * 100;
+    }, 0);
+
+    average = sum / validResults.length;
+  }
+
+  detailAverage.textContent = `${average.toFixed(1)}%`;
+
+  const activities = new Set(
+    studentResults.map(result =>
+      result.activity_id || result.activity_name
+    )
+  );
+
+  detailActivities.textContent = activities.size;
+
+  studentHistoryBody.innerHTML = '';
+
+  if (studentResults.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+
+    td.colSpan = 5;
+    td.className = 'empty';
+    td.textContent = 'Este estudiante todavía no tiene calificaciones.';
+
+    tr.appendChild(td);
+    studentHistoryBody.appendChild(tr);
+
+  } else {
+    studentResults.forEach(result => {
+      const tr = document.createElement('tr');
+
+      const values = [
+        result.activity_name || 'Actividad',
+        result.level || 'General',
+        `${result.score} / ${result.max_score}`,
+        result.completed_at
+          ? new Date(result.completed_at).toLocaleString('es-CR')
+          : 'Sin fecha'
+      ];
+
+      values.forEach(value => {
+        const td = document.createElement('td');
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+
+      // Calcular el porcentaje de rendimiento.
+      const score = Number(result.score);
+      const maxScore = Number(result.max_score);
+
+      const validScore =
+        Number.isFinite(score) &&
+        Number.isFinite(maxScore) &&
+        maxScore > 0;
+
+      const percentage = validScore
+        ? Math.max(0, Math.min(100, (score / maxScore) * 100))
+        : null;
+
+      
+// Crear la columna de rendimiento.
+const performanceCell = document.createElement('td');
+
+if (percentage !== null) {
+  let levelClass = 'low';
+  let levelText = 'Rendimiento bajo';
+
+  if (percentage >= 80) {
+    levelClass = 'high';
+    levelText = 'Rendimiento alto';
+  } else if (percentage >= 60) {
+    levelClass = 'medium';
+    levelText = 'Rendimiento intermedio';
+  }
+
+  const track = document.createElement('div');
+  track.className = 'progress-track';
+
+  const fill = document.createElement('div');
+  fill.className = `progress-fill ${levelClass}`;
+  fill.style.width = `${percentage}%`;
+
+  track.appendChild(fill);
+
+  const label = document.createElement('span');
+  label.className = 'progress-label';
+  label.textContent = `${percentage.toFixed(1)}%`;
+
+  const statusLabel = document.createElement('span');
+  statusLabel.className = `performance-status ${levelClass}`;
+  statusLabel.textContent = levelText;
+
+  performanceCell.appendChild(track);
+  performanceCell.appendChild(label);
+  performanceCell.appendChild(statusLabel);
+} else {
+  performanceCell.textContent = 'No disponible';
+}
+
+tr.appendChild(performanceCell);
+
+      studentHistoryBody.appendChild(tr);
+    });
+  }
+
+  studentDetails.hidden = false;
+  studentDetails.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
+}
+
+
+
     function renderResults() {
       resultsBody.innerHTML = '';
 
@@ -542,13 +958,25 @@
               : 'Sin fecha'
           ];
 
-          values.forEach(value => {
-            const td = document.createElement('td');
-            td.textContent = value;
-            tr.appendChild(td);
-          });
+          
+values.forEach(value => {
+  const td = document.createElement('td');
+  td.textContent = value;
+  tr.appendChild(td);
+});
 
-          resultsBody.appendChild(tr);
+const actionCell = document.createElement('td');
+const viewButton = document.createElement('button');
+
+viewButton.type = 'button';
+viewButton.textContent = 'Ver ficha';
+viewButton.dataset.studentId = result.student_id;
+
+actionCell.appendChild(viewButton);
+tr.appendChild(actionCell);
+
+resultsBody.appendChild(tr);
+
         });
       }
 
@@ -568,6 +996,19 @@
     studentFilter.addEventListener('input', renderResults);
 
     activityFilter.addEventListener('change', renderResults);
+
+    resultsBody.addEventListener('click', event => {
+  const button = event.target.closest('button[data-student-id]');
+
+  if (!button) return;
+
+  openStudentDetails(button.dataset.studentId);
+});
+
+document.getElementById('closeStudentDetails')
+  .addEventListener('click', () => {
+    studentDetails.hidden = true;
+  });
 
     document.getElementById('logout').addEventListener('click', async () => {
       await db.auth.signOut();
